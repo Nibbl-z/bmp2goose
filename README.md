@@ -1,4 +1,4 @@
-# bpm2goose
+# bmp2goose
 
 This is a command line interface that converts bitmap (.bmp) files into the file format that one of my previous projects, [Goose Platformer](https://github.com/Nibbl-z/goose-platformer), uses for custom levels (.goose).
 
