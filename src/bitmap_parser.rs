@@ -39,7 +39,7 @@ impl Bitmap {
         let width = read_4_bytes(&bytes[18..22]);
         let height = read_4_bytes(&bytes[22..26]);
         let bytes_per_row = round_to_4_bytes(width)?;
-
+        
         let mut pixels: Vec<Vec<RGB>> = Vec::new();
         
         println!("Parsing Bitmap...");
