@@ -1,11 +1,5 @@
-use std::{fs, num::TryFromIntError};
+use std::{fs, io::Write, num::TryFromIntError};
 
-struct Bitmap {
-    width : u32,
-    height : u32,
-    pixels : Vec<Vec<RGB>>
-}
-#[derive(Debug)]
 struct RGB {
     r : u8,
     g : u8,
@@ -15,11 +9,17 @@ struct RGB {
 impl RGB {
     fn from_bytes(bytes : &[u8]) -> RGB {
         RGB {
-            r: bytes[0],
+            b: bytes[0],
             g: bytes[1],
-            b: bytes[2]
+            r: bytes[2]
         }
     }
+}
+
+struct Bitmap {
+    width : u32,
+    height : u32,
+    pixels : Vec<Vec<RGB>>
 }
 
 fn read_4_bytes(bytes : &[u8]) -> u32 {
@@ -61,19 +61,19 @@ impl Bitmap {
                     row_pixels.push(RGB::from_bytes(pixel_bytes));
                 }
             }
-            
-            row_pixels.reverse();
 
             pixels.push(row_pixels);
         }
-
+        
+        pixels.reverse();
+        
         Ok(Bitmap {
             width,
             height,
             pixels
         })
     }
-
+    
     fn row_start_slice(bytes_per_row : u32, row : u32) -> usize {
         (54 + row * bytes_per_row) as usize
     }
@@ -87,11 +87,57 @@ impl Bitmap {
     }
 }
 
+struct Platform {
+    x : f32,
+    y : f32,
+    w : f32,
+    h : f32,
+    r : u8,
+    g : u8,
+    b : u8
+}
+
+impl Platform {
+    fn new(x : u32, y : u32, scale : f32, bitmap : &Bitmap, x_offset : f32, y_offset : f32) -> Platform {
+        let rgb = bitmap.get_pixel_at(x, y);
+        
+        Platform {
+            x : (x as f32) * scale + x_offset,
+            y : (y as f32) * scale + y_offset,
+            w : scale,
+            h : scale,
+            r : rgb.r,
+            g : rgb.g,
+            b : rgb.b
+        }
+    }
+    
+    fn to_goose(&self) -> String {
+        format!(
+            "X:{};Y:{};W:{};H:{};T:1;R:{};G:{};B:{};|",
+            (self.x as f32) * 0.6, (self.y as f32) * 0.6, self.w, self.h, (self.r as f32) / 255.0, (self.g as f32) / 255.0, (self.b as f32) / 255.0
+        )
+    }
+}
+
 fn main() {
     if let Ok(bmp) = Bitmap::from("image.bmp") {
         println!("width: {}, height: {}", bmp.width, bmp.height);
-
-        println!("the corner is {:?}", bmp.get_pixel_at(0, 0));
+        
+        let mut goose_export = String::new();
+        
+        for y in 0..bmp.height {
+            for x in 0..bmp.width {
+                let platform = Platform::new(x, y, 5.0, &bmp, 200.0, 200.0);
+                goose_export.push_str(&platform.to_goose());
+            }
+        }
+        
+        let export = fs::File::create("export.goose");
+        if let Ok(mut file) = export {
+            let _ = file.write_all(goose_export.as_bytes());
+        }
+    
     } else {
         panic!("what")
     }
