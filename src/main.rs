@@ -2,11 +2,10 @@ use std::{fs, num::TryFromIntError};
 
 struct Bitmap {
     width : u32,
-    bytes_per_row : u32,
     height : u32,
-    bytes : Vec<u8>
+    pixels : Vec<Vec<RGB>>
 }
-
+#[derive(Debug)]
 struct RGB {
     r : u8,
     g : u8,
@@ -43,46 +42,48 @@ impl Bitmap {
         let height = read_4_bytes(&bytes[22..26]);
         let bytes_per_row = round_to_4_bytes(width)?;
 
-        Ok(Bitmap {
-            width,
-            height,
-            bytes_per_row,
-            bytes
-        })
-    }
-
-    fn row_start_slice(&self, row : u32) -> usize {
-        (54 + row * self.bytes_per_row) as usize
-    }
-
-    fn row_end_slice(&self, row : u32) -> usize {
-        (54 + (row + 1) * self.bytes_per_row) as usize
-    }
-
-    fn get_pixels(&self) -> Vec<Vec<RGB>> {
         let mut pixels: Vec<Vec<RGB>> = Vec::new();
-
-        for y in 1..self.height {
-            let start = self.row_start_slice(y);
-            let end = self.row_end_slice(y);
-            let row_bytes = &self.bytes[start..end];
+        
+        for y in 0..height {
+            let start = Bitmap::row_start_slice(bytes_per_row, y);
+            let end = Bitmap::row_end_slice(bytes_per_row, y);
+            let row_bytes = &bytes[start..end];
             
             let mut row_pixels: Vec<RGB> = Vec::new();
-
-            for x in 0..self.width {
+            
+            for x in 0..width * 3{
                 if x % 3 == 0 {
-                    let pixel_start = (x * 3) as usize;
-                    let pixel_end = ((x + 1) * 3) as usize;
+                    let pixel_start = (x) as usize;
+                    let pixel_end = (x + 3) as usize;
+                    
                     let pixel_bytes = &row_bytes[pixel_start..pixel_end];
-    
+                    
                     row_pixels.push(RGB::from_bytes(pixel_bytes));
                 }
             }
+            
+            row_pixels.reverse();
 
             pixels.push(row_pixels);
         }
 
-        return pixels;
+        Ok(Bitmap {
+            width,
+            height,
+            pixels
+        })
+    }
+
+    fn row_start_slice(bytes_per_row : u32, row : u32) -> usize {
+        (54 + row * bytes_per_row) as usize
+    }
+
+    fn row_end_slice(bytes_per_row : u32, row : u32) -> usize {
+        (54 + (row + 1) * bytes_per_row) as usize
+    }
+
+    fn get_pixel_at(&self, x : u32, y : u32) -> &RGB {
+        &self.pixels[y as usize][x as usize]
     }
 }
 
@@ -90,13 +91,7 @@ fn main() {
     if let Ok(bmp) = Bitmap::from("image.bmp") {
         println!("width: {}, height: {}", bmp.width, bmp.height);
 
-        let pixels = bmp.get_pixels();
-        for y in pixels.iter() {
-            for x in y.iter() {
-                println!("R : {}, B : {}, G : {}, X : {}, Y : {}", x.r, x.g, x.b, 0, 0)
-            }
-        }
-
+        println!("the corner is {:?}", bmp.get_pixel_at(0, 0));
     } else {
         panic!("what")
     }
