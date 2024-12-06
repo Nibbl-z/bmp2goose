@@ -1,4 +1,5 @@
-use std::{fs, io::Write, num::TryFromIntError};
+use std::{fs, io::{self, Write}, num::TryFromIntError, path::PathBuf};
+use rfd::FileDialog;
 
 struct RGB {
     r : u8,
@@ -23,10 +24,7 @@ struct Bitmap {
 }
 
 fn read_4_bytes(bytes : &[u8]) -> u32 {
-    ((bytes[0] as u32) <<  0) +
-    ((bytes[1] as u32) <<  8) +
-    ((bytes[2] as u32) << 16) +
-    ((bytes[3] as u32) << 24)
+    bytes.iter().enumerate().map(|(i, &b)| (b as u32) << (i * 8)).sum()
 }
 
 fn round_to_4_bytes(number : u32) -> Result<u32, TryFromIntError> {
@@ -120,25 +118,78 @@ impl Platform {
     }
 }
 
+fn get_input(message : &str) -> Result<String, io::Error> {
+    println!("{}", message);
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    Ok(input.trim().to_string())
+}
+
+fn get_float_input(message : &str) -> f32 {
+    loop {
+        match get_input(message) {
+            Ok(input) => match input.parse::<f32>() {
+                Ok(value) => break value,
+                Err(_) => println!("Invalid input. Please enter a valid number."),
+            },
+            Err(_) => println!("Failed to read input. Please try again."),
+        }
+    }
+}
+
+
+
 fn main() {
-    if let Ok(bmp) = Bitmap::from("image.bmp") {
+    println!("Select a bitmap file...");
+    let file_path: PathBuf = loop {
+        let file = FileDialog::new()
+        .add_filter("bitmap", &["bmp"])
+        .set_directory("/")
+        .set_title("Select a bitmap file")
+        .pick_file();
+        
+        if let Some(path) = file {
+            break path;
+        }
+    };
+    println!("Select an export location...");
+    let export_path: PathBuf = loop {
+        let file = FileDialog::new()
+        .add_filter("Goose Platformer", &["goose"])
+        .set_file_name("export.goose")
+        .set_title("Select an export location")
+        .save_file();
+        
+        if let Some(path) = file {
+            break path;
+        }
+    };
+    
+    let scale : f32 = get_float_input("Enter what size you want each pixel to be (1.0 = 1 pixel): ");
+    let x_offset : f32 = get_float_input("Enter the starting X position of the image");
+    let y_offset : f32 = get_float_input("Enter the starting Y position of the image");
+    
+    if let Ok(bmp) = Bitmap::from(file_path.to_str().unwrap()) {
         println!("width: {}, height: {}", bmp.width, bmp.height);
         
         let mut goose_export = String::new();
         
         for y in 0..bmp.height {
             for x in 0..bmp.width {
-                let platform = Platform::new(x, y, 5.0, &bmp, 200.0, 200.0);
+                let platform = Platform::new(x, y, scale, &bmp, x_offset, y_offset);
                 goose_export.push_str(&platform.to_goose());
             }
         }
         
-        let export = fs::File::create("export.goose");
+        let export = fs::File::create(export_path.to_str().unwrap());
         if let Ok(mut file) = export {
             let _ = file.write_all(goose_export.as_bytes());
         }
     
     } else {
-        panic!("what")
+        panic!("The file was not found despite extensive checking..???")
     }
+    
+    println!("Successfully exported to {}", file_path.to_str().unwrap());
+    let _ = get_input("Press enter to exit...");
 }
