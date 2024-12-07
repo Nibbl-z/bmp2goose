@@ -24,7 +24,18 @@ fn get_float_input(message : &str) -> f32 {
     }
 }
 
-
+fn get_boolean_input(message : &str) -> bool {
+    loop {
+        match get_input(message) {
+            Ok(input) => match input.as_str() {
+                "y" => break true,
+                "n" => break false,
+                _ => println!("Please enter y or n.")
+            },
+            Err(_) => println!("Failed to read input. Please try again."),
+        }
+    }
+}
 
 fn main() {
     println!("Select a bitmap file...");
@@ -55,6 +66,7 @@ fn main() {
     let scale : f32 = get_float_input("Enter what size you want each pixel to be (1.0 = 1 pixel): ");
     let x_offset : f32 = get_float_input("Enter the starting X position of the image");
     let y_offset : f32 = get_float_input("Enter the starting Y position of the image");
+    let remove_white_pixels : bool = get_boolean_input("Do you want to exclude white pixels? (The background in Goose Platformer is white, making these pixels practically invisible) (y/n): ");
     
     if let Ok(bmp) = Bitmap::from(file_path.to_str().unwrap()) {
         let start_time = Instant::now();
@@ -64,6 +76,12 @@ fn main() {
         .map(|y| {
             let mut row_export = String::new();
             for x in 0..bmp.width {
+                let pixel = bmp.get_pixel_at(x, y);
+                
+                if remove_white_pixels && pixel.r == 255 && pixel.g == 255 && pixel.b == 255 {
+                    continue
+                }
+                
                 let platform = Platform::new(x, y, scale, &bmp, x_offset, y_offset);
                 row_export.push_str(&platform.to_goose());
             }
