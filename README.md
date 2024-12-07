@@ -14,5 +14,6 @@ This is a command line interface that converts bitmap (.bmp) files into the file
 3. Enter the size you want for each pixel
 4. Enter the X offset
 5. Enter the Y offset
-6. If you have exported your .goose file to somewhere other than the Goose Platformer save directory, then move it there (AppData/goose-platformer)
-7. Enjoy!!!
+6. Select if you'd like to exclude white pixels
+7. If you have exported your .goose file to somewhere other than the Goose Platformer save directory, then move it there (AppData/goose-platformer)
+8. Enjoy!!!
